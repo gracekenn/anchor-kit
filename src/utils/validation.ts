@@ -282,8 +282,15 @@ export const AnchorKitConfigSchema = {
     }
 
     if (framework.rateLimit) {
-      const rateEntries = Object.entries(framework.rateLimit) as [string, unknown][];
-      for (const [key, value] of rateEntries) {
+      const numericKeys = [
+        'windowMs',
+        'authChallengeMax',
+        'authTokenMax',
+        'webhookMax',
+        'depositMax',
+      ];
+      for (const key of numericKeys) {
+        const value = (framework.rateLimit as Record<string, unknown>)[key];
         if (value === undefined) continue;
         if (typeof value !== 'number' || !Number.isFinite(value)) {
           throw new Error(`framework.rateLimit.${key} must be a finite number`);
