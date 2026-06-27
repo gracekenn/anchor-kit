@@ -1611,11 +1611,60 @@ describe('MVP Express-mounted integration', () => {
     expect(tokenResponse.body.message).toBe('Challenge not found');
   });
 
-  it('15) malformed JSON on POST /auth/token returns 400', async () => {
-    const response = await invoke({
+  // ── Issue #214: missing body fields on POST /auth/token ──────────────────
+
+  it('15) /auth/token with missing account field returns 400', async () => {
+    const tokenResponse = await invoke({
       method: 'POST',
       path: '/auth/token',
       headers: { 'content-type': 'application/json' },
+      // account is absent; only challenge is provided
+      body: { challenge: 'some-challenge-xdr' },
+    });
+
+    expect(tokenResponse.status).toBe(400);
+    expect(tokenResponse.body.error).toBe('invalid_request');
+    expect(tokenResponse.body.message).toBe('Body must include account and challenge');
+  });
+
+  it('15b) /auth/token with missing challenge field returns 400', async () => {
+    const tokenResponse = await invoke({
+      method: 'POST',
+      path: '/auth/token',
+      headers: { 'content-type': 'application/json' },
+      // challenge is absent; only account is provided
+      body: { account: clientKeypair.publicKey() },
+    });
+
+    expect(tokenResponse.status).toBe(400);
+    expect(tokenResponse.body.error).toBe('invalid_request');
+    expect(tokenResponse.body.message).toBe('Body must include account and challenge');
+  });
+
+  it('15c) /auth/token with both account and challenge missing returns 400', async () => {
+    const tokenResponse = await invoke({
+      method: 'POST',
+      path: '/auth/token',
+      headers: { 'content-type': 'application/json' },
+      // entirely empty body
+      body: {},
+    });
+
+    expect(tokenResponse.status).toBe(400);
+    expect(tokenResponse.body.error).toBe('invalid_request');
+    expect(tokenResponse.body.message).toBe('Body must include account and challenge');
+  });
+
+  // ── Malformed JSON bodies ────────────────────────────────────────────────
+
+  it('15d) malformed JSON on POST /auth/token returns 400', async () => {
+    const response = await invoke({
+      method: 'POST',
+      path: '/auth/token',
+      headers: {
+        'content-type': 'application/json',
+        'x-forwarded-for': '10.0.0.7',
+      },
       rawBody: '{not json',
     });
 
@@ -1624,13 +1673,13 @@ describe('MVP Express-mounted integration', () => {
     expect(response.body.message).toBe('Request body must be valid JSON');
   });
 
-  it('15b) malformed JSON on POST /transactions/deposit/interactive returns 400', async () => {
+  it('15e) malformed JSON on POST /transactions/deposit/interactive returns 400', async () => {
     const response = await invoke({
       method: 'POST',
       path: '/transactions/deposit/interactive',
       headers: {
-        authorization: `Bearer ${accessToken}`,
         'content-type': 'application/json',
+        authorization: `Bearer ${accessToken}`,
       },
       rawBody: '{"asset_code":',
     });
@@ -1640,7 +1689,7 @@ describe('MVP Express-mounted integration', () => {
     expect(response.body.message).toBe('Request body must be valid JSON');
   });
 
-  it('15c) malformed JSON on POST /webhooks/events returns 400', async () => {
+  it('15f) malformed JSON on POST /webhooks/events returns 400', async () => {
     const response = await invoke({
       method: 'POST',
       path: '/webhooks/events',
@@ -1653,7 +1702,7 @@ describe('MVP Express-mounted integration', () => {
     expect(response.body.message).toBe('Request body must be valid JSON');
   });
 
-  it('15d) oversize body on POST /auth/token returns 413', async () => {
+  it('15g) oversize body on POST /auth/token returns 413', async () => {
     const customDbUrl = makeSqliteDbUrlForTests();
     const customDbPath = customDbUrl.startsWith('file:')
       ? customDbUrl.slice('file:'.length)
@@ -1708,5 +1757,39 @@ describe('MVP Express-mounted integration', () => {
         // ignore cleanup errors in CI
       }
     }
+  });
+
+  // ── Non-positive deposit amounts ─────────────────────────────────────────
+
+  it('16) deposit with amount of zero is rejected with 400', async () => {
+    const response = await invoke({
+      method: 'POST',
+      path: '/transactions/deposit/interactive',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${accessToken}`,
+      },
+      body: { asset_code: 'USDC', amount: '0' },
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('invalid_amount');
+    expect(response.body.message).toBe('Amount must be a positive number');
+  });
+
+  it('16b) deposit with negative amount is rejected with 400', async () => {
+    const response = await invoke({
+      method: 'POST',
+      path: '/transactions/deposit/interactive',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${accessToken}`,
+      },
+      body: { asset_code: 'USDC', amount: '-5' },
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('invalid_amount');
+    expect(response.body.message).toBe('Amount must be a positive number');
   });
 });
