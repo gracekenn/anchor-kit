@@ -309,6 +309,16 @@ describe('MVP Express-mounted integration', () => {
     }
   });
 
+  it('3a) /auth/challenge without account query param returns 400', async () => {
+    const response = await invoke({
+      path: '/auth/challenge',
+      headers: { 'x-forwarded-for': '10.0.0.5' },
+    });
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('invalid_request');
+    expect(response.body.message).toBe('Query param account is required');
+  });
+
   it('3) challenge -> token happy path', async () => {
     const account = clientKeypair.publicKey();
     const challengeResponse = await invoke({
