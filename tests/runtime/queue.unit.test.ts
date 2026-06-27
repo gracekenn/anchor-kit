@@ -288,6 +288,27 @@ describe('InMemoryQueueAdapter', () => {
     expect(startedJobs.length).toBeLessThanOrEqual(2);
   });
 
+  it('should not process jobs enqueued after stop()', async () => {
+    const queue = new InMemoryQueueAdapter({ concurrency: 1 });
+    const processedJobs: number[] = [];
+
+    const worker = async (job: QueueJob): Promise<void> => {
+      processedJobs.push(job.payload.jobId as number);
+    };
+
+    await queue.start(worker);
+    await queue.stop();
+
+    await queue.enqueue({
+      type: 'process_watcher_task',
+      payload: { jobId: 99 },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    expect(processedJobs).toEqual([]);
+  });
+
   it('should resolve stop() only after the very last job is completely finished', async () => {
     const queue = new InMemoryQueueAdapter({ concurrency: 1 });
     let jobFinished = false;
