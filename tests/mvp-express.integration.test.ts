@@ -408,6 +408,17 @@ describe('MVP Express-mounted integration', () => {
     }
   });
 
+  it('3c) invalid account public key returns 400 response', async () => {
+    const invalidAccount = 'not_a_valid_stellar_public_key';
+    const challengeResponse = await invoke({
+      path: `/auth/challenge?account=${invalidAccount}`,
+      headers: { 'x-forwarded-for': '10.0.0.5' },
+    });
+
+    expect(challengeResponse.status).toBe(400);
+    expect(challengeResponse.body.error).toBe('invalid_request');
+  });
+
   it('3b) auth token with custom TTL returns correct expires_in', async () => {
     // Create a new anchor instance with custom TTL using a separate database
     const customDbUrl = makeSqliteDbUrlForTests();
