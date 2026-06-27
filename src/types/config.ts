@@ -300,34 +300,22 @@ export interface OperationalConfig {
   supportEmail?: string;
 
   /**
-   * Operational address
+   * Enable webhook event processing
    * @optional
-   */
-  address?: OperationalAddress;
-
-  /**
-   * Enable transaction webhook notifications
-   * @optional - defaults to true
    */
   webhooksEnabled?: boolean;
 
   /**
-   * Background job queue backend ('memory' | 'redis' | 'postgres')
-   * @optional - defaults to 'memory'
-   */
-  queueBackend?: 'memory' | 'redis' | 'postgres';
-
-  /**
-   * Redis connection URL (required if queueBackend is 'redis')
+   * Enable CORS for HTTP endpoints
    * @optional
    */
-  redisUrl?: string;
+  corsEnabled?: boolean;
 
   /**
-   * Enable cross-origin requests
-   * @optional - defaults to true
+   * Operational address
+   * @optional
    */
-  corsEnabled?: boolean;
+  address?: OperationalAddress;
 
   /**
    * Transaction retention period in days
